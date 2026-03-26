@@ -5,6 +5,21 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from os import environ as env
 import asyncio, datetime, time
 
+from flask import Flask
+import threading
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "Bot is Running!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=10000)
+
+threading.Thread(target=run_web).start()
+
+
 
 ACCEPTED_TEXT = "Hey {user}\n\nYour Request For {chat} Is Accepted ✅"
 START_TEXT = "Hai {}\n\nI am Auto Request Accept Bot With Working For All Channel. Add Me In Your Channel To Use"
