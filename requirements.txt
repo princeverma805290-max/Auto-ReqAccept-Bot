@@ -1,6 +1,7 @@
-pymongo[srv]==3.11
-motor==2.5.1
 pyrogram
 tgcrypto
+motor
+flask
+pymongo[srv]
 
 
