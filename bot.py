@@ -12,7 +12,7 @@ START_TEXT = "Hai {}\n\nI am Auto Request Accept Bot With Working For All Channe
 API_ID = int(env.get('API_ID'))
 API_HASH = env.get('API_HASH')
 BOT_TOKEN = env.get('BOT_TOKEN')
-DB_URL = mongodb+srv://princeverma:Pkgamingff1347@tp-auto-aprove-bot.8hc3wp3.mongodb.net/?appName=TP-AUTO-APROVE-BOT
+DB_URL = "mongodb+srv://princeverma:Pkgamingff1347@tp-auto-aprove-bot.8hc3wp3.mongodb.net/?appName=TP-AUTO-APROVE-BOT"
 ADMINS = 8241838848
 
 Dbclient = AsyncIOMotorClient(DB_URL)
