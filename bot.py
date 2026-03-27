@@ -49,6 +49,33 @@ async def set_text(c, m):
     await Settings.update_one({'id': 'config'}, {'$set': {'text': new_text}}, upsert=True)
     await m.reply_text("✅ Welcome Text Updated!")
 
+# 3. STATS COMMAND (Admin Only)
+@Bot.on_message(filters.command("stats") & filters.user(ADMINS))
+async def get_stats(c, m):
+    users = await Data.count_documents({})
+    await m.reply_text(f"📊 **Bot Stats**\n\nTotal Users: `{users}`")
+
+# 4. BROADCAST COMMAND (Admin Only)
+@Bot.on_message(filters.command("broadcast") & filters.user(ADMINS))
+async def broadcast(c, m):
+    if not m.reply_to_message:
+        return await m.reply_text("Kisi message ko reply karke `/broadcast` likhein!")
+    
+    msg = await m.reply_text("🚀 Broadcast shuru ho raha hai...")
+    users = Data.find({})
+    done = 0
+    failed = 0
+    
+    async for user in users:
+        try:
+            await m.reply_to_message.copy(chat_id=user['id'])
+            done += 1
+        except:
+            failed += 1
+            
+    await msg.edit(f"✅ **Broadcast Complete!**\n\nSent to: `{done}` users\nFailed: `{failed}` (Blocked/Deleted)")
+
+
 # 2. START HANDLER (With Auto-Delete & Note)
 @Bot.on_message(filters.command("start") & filters.private)
 async def start_handler(c, m):
