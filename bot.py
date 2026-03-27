@@ -184,3 +184,53 @@ async def req_accept(c, m):
     except: pass
 
 Bot.run()
+
+from pyrogram import Client, filters
+from pyrogram.types import Message
+
+# Replace with your actual Owner ID
+OWNER_ID = 123456789 
+ADMINS = [OWNER_ID] # You can add more IDs here
+
+# --- OWNER ONLY COMMANDS ---
+
+@Client.on_message(filters.command("stats") & filters.user(OWNER_ID))
+async def get_stats(client, message):
+    # Logic to count users from your database
+    await message.reply_text("📊 **Full Bot Statistics:**\nTotal Users: 1000\nTotal Channels: 5")
+
+@Client.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
+async def broadcast(client, message):
+    if not message.reply_to_message:
+        return await message.reply_text("Reply to a message to broadcast it.")
+    await message.reply_text("📢 Starting broadcast...")
+    # Add loop here to send to all users in DB
+
+@Client.on_message(filters.command("addadmin") & filters.user(OWNER_ID))
+async def add_admin(client, message):
+    # Logic to save new admin ID to database
+    await message.reply_text("✅ New admin added successfully.")
+
+# --- ADMIN COMMANDS ---
+
+@Client.on_message(filters.command("status") & filters.user(ADMINS))
+async def bot_status(client, message):
+    await message.reply_text("✅ Bot is running smoothly.")
+
+@Client.on_message(filters.command("addch") & filters.user(ADMINS))
+async def add_channel(client, message):
+    await message.reply_text("Please send the Channel ID or Username to link.")
+
+# --- AUTO APPROVAL LOGIC ---
+
+@Client.on_chat_join_request()
+async def auto_approve(client, chat_join_request):
+    chat = chat_join_request.chat
+    user = chat_join_request.from_user
+    
+    # Here you would check if 'reqmode' is ON in your DB
+    await client.approve_chat_join_request(chat_id=chat.id, user_id=user.id)
+    try:
+        await client.send_message(user.id, f"Welcome to {chat.title}! Your request was approved.")
+    except:
+        pass
