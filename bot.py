@@ -1,236 +1,79 @@
-import os, asyncio, threading
-from flask import Flask
-from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from motor.motor_asyncio import AsyncIOMotorClient
+# Auto-ReqAccept-Bot
 
-# --- RENDER PORT SETUP ---
-app = Flask(__name__)
-@app.route('/')
-def hello(): return "Bot is Running!"
-def run_web(): app.run(host='0.0.0.0', port=1234)
-threading.Thread(target=run_web).start()
-
-# --- CONFIGURATION (Sahi format mein) ---
-API_ID = 33568744
-API_HASH = "362b41958aa6a949dbe789bbf82d01e8"
-BOT_TOKEN = "8267135540:AAESIn5KuPL0rPl3vVTWsdm6b3axEGhCeao"
-DB_URL = "mongodb+srv://princeverma:Pkgamingff347@tp-auto-aprove-bot.8hc3wp3.mongodb.net/?appName=TP-APROVE-BOT"
-
-# ADMINS List (Bracket mein commas ke sath)
-ADMINS = [8241838848, 7083049534] 
-
-# Aapke bataye huye URLs
-BACKUP_URL = "https://t.me/TP_Bot_Updates"
-SUPPORT_URL = "https://t.me/TP_Chats_02"
-TP_SERVER = "https://t.me/TP_Server_02"
-
-# --- DATABASE ---
-Dbclient = AsyncIOMotorClient(DB_URL)
-Data = Dbclient['Cluster0']['users']
-LinkData = Dbclient['Cluster0']['links']
-Settings = Dbclient['Cluster0']['settings']
-
-Bot = Client(name='TP_AutoBot', api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
-
-# 1. ADMIN COMMANDS (Pic aur Text ke liye)
-@Bot.on_message(filters.command("setpic") & filters.user(ADMINS))
-async def set_pic(c, m):
-    if not m.reply_to_message or not m.reply_to_message.photo:
-        return await m.reply_text("Photo ko reply karke `/setpic` likhein!")
-    file_id = m.reply_to_message.photo.file_id
-    await Settings.update_one({'id': 'config'}, {'$set': {'pic': file_id}}, upsert=True)
-    await m.reply_text("✅ Approval Picture Updated!")
-
-@Bot.on_message(filters.command("settext") & filters.user(ADMINS))
-async def set_text(c, m):
-    if len(m.text.split()) < 2: return await m.reply_text("Usage: `/settext Aapka Message` ")
-    new_text = m.text.split(None, 1)[1]
-    await Settings.update_one({'id': 'config'}, {'$set': {'text': new_text}}, upsert=True)
-    await m.reply_text("✅ Welcome Text Updated!")
-
-# 3. STATS COMMAND (Admin Only)
-@Bot.on_message(filters.command("stats") & filters.user(ADMINS))
-async def get_stats(c, m):
-    users = await Data.count_documents({})
-    await m.reply_text(f"📊 **Bot Stats**\n\nTotal Users: `{users}`")
-
-# 4. BROADCAST COMMAND (Admin Only)
-@Bot.on_message(filters.command("broadcast") & filters.user(ADMINS))
-async def broadcast(c, m):
-    if not m.reply_to_message:
-        return await m.reply_text("Kisi message ko reply karke `/broadcast` likhein!")
-    
-    msg = await m.reply_text("🚀 Broadcast shuru ho raha hai...")
-    users = Data.find({})
-    done = 0
-    failed = 0
-    
-    async for user in users:
-        try:
-            await m.reply_to_message.copy(chat_id=user['id'])
-            done += 1
-        except:
-            failed += 1
-            
-    await msg.edit(f"✅ **Broadcast Complete!**\n\nSent to: `{done}` users\nFailed: `{failed}` (Blocked/Deleted)")
+This Is A Telegram For Automatically Accept Chat Join Request With Broadcast &amp; Users Database Feature 
 
 
-# 2. START HANDLER (With Auto-Delete & Note)
-@Bot.on_message(filters.command("start") & filters.private)
-async def start_handler(c, m):
-    user_id = m.from_user.id
-    if not await Data.find_one({'id': user_id}):
-        await Data.insert_one({'id': user_id})
-    
-            # --- LINK GENERATE WALA LOGIC (REVISED) ---
-        if len(m.text.split()) > 1:
-            try:
-                chat_id = int(m.text.split()[1])
-                db_link = await LinkData.find_one({'chat_id': chat_id})
-                target_link = db_link['link'] if db_link else TP_SERVER
+<details>
+<summary><b>Vars and Details :</b></summary>
 
-                # Database se Admin ki set ki hui photo aur text nikalna
-                config = await Settings.find_one({'id': 'config'})
-                pic = config.get('pic') if config else None
-                
-                # Format jaisa aapne screenshot mein dikhaya
-                text = f"**HERE IS YOUR LINK! CLICK BELOW TO PROCEED**\n\n• **REQUEST TO JOIN** •"
-                note_text = "Note: If the link is expired, please click the post link again to get a new one."
+`API_ID` : Goto [my.telegram.org](https://my.telegram.org) To Obtain This.
 
-                # Button se dots hataye gaye
-                btn = [[
-                    InlineKeyboardButton("REQUEST TO JOIN", url=target_link)
-                ]]
+`API_HASH` : Goto [my.telegram.org](https://my.telegram.org) To Obtain This.
+  
+`BOT_TOKEN` : Get The Bot Token From [@BotFather](https://telegram.dog/BotFather)
 
-                # Agar /setpic se photo set hai toh photo bhejega
-                if pic:
-                    msg = await c.send_photo(
-                        m.chat.id,
-                        photo=pic,
-                        caption=text,
-                        reply_markup=InlineKeyboardMarkup(btn)
-                    )
-                else:
-                    msg = await m.reply_text(
-                        text,
-                        reply_markup=InlineKeyboardMarkup(btn)
-                    )
+`ADMINS` : Your Telegram ID form @Tgraph_Multi_Bot click /id in this bot
 
-                # Note wala message alag se
-                note_msg = await m.reply_text(note_text)
-
-                # 3 Min Auto Delete Logic
-                await asyncio.sleep(180)
-                try:
-                    await msg.delete()
-                    await note_msg.delete()
-                except:
-                    pass
-                return
-
-            except Exception as e:
-                print(f"Error in Start: {e}")
-                # Agar error aaye toh fallback message
-                await m.reply_text(f"❌ Error: Bot ko us channel mein Admin banayein!\n{e}")
-                return
+`DB_URL` : MongoDB URI For [MongoDB](https://mongodb.com)
+</details>
 
 
-    # Simple Start Message
-    text = f"Hai @{m.from_user.username} I am Auto Request Accept Bot. Add Me In Your Channel To Use"
-    buttons = [[InlineKeyboardButton("Updates", url=BACKUP_URL), 
-                InlineKeyboardButton("Support", url=SUPPORT_URL)]]
-    await m.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons))
+<details>
+<summary><b>Deploy On Heroku</b></summary>
 
-# 3. LINK GENERATOR (Forward Message to Bot)
-@Bot.on_message(filters.forwarded & filters.private & filters.user(ADMINS))
-async def gen_link_forward(c, m):
-    if not m.forward_from_chat: return
-    chat_id = m.forward_from_chat.id
-    try:
-        link_obj = await c.create_chat_invite_link(chat_id, creates_join_request=True)
-        link = link_obj.invite_link
-        await LinkData.update_one({'chat_id': chat_id}, {'$set': {'link': link}}, upsert=True)
-        
-        bot_username = (await c.get_me()).username
-        share_link = f"https://t.me/{bot_username}?start={chat_id}"
-        await m.reply_text(f"Here is your channel link :-\n\n`{share_link}`")
-    except Exception as e:
-        await m.reply_text(f"❌ Error: Bot ko us channel mein Admin banayein!\n{e}")
+Change template url to your repo url
 
-# 4. AUTO ACCEPT (With Pic + TP Server Link)
-@Bot.on_chat_join_request()
-async def req_accept(c, m):
-    user_id = m.from_user.id
-    chat_id = m.chat.id
-    await c.approve_chat_join_request(chat_id, user_id)
-    
-    config = await Settings.find_one({'id': 'config'})
-    pic = config.get('pic') if config else None
-    custom_text = config.get('text') if config else f"YOUR REQUEST TO JOIN **{m.chat.title}** HAS BEEN APPROVED."
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/MrMKN/Auto-ReqAccept-Bot)             
+</details>
 
-    db_link = await LinkData.find_one({'chat_id': chat_id})
-    ch_link = db_link['link'] if db_link else TP_SERVER
+<details>
+<summary></b>Deploy On VPS</b></summary>
 
-    text = f"HEY {m.from_user.mention} ⚡️\n\n{custom_text}"
-    buttons = [[InlineKeyboardButton("• TP SERVER •", url=TP_SERVER)],
-               [InlineKeyboardButton(f"• JOIN {m.chat.title} •", url=ch_link)]]
-    
-    try:
-        if pic:
-            await c.send_photo(user_id, photo=pic, caption=text, reply_markup=InlineKeyboardMarkup(buttons))
-        else:
-            await c.send_message(user_id, text=text, reply_markup=InlineKeyboardMarkup(buttons))
-    except: pass
+1. Make Your Repo To Private
+2. Add All Variables In Repo
+3. Make Repo To Public Once
+4. Clone You're Repo To VPS
 
-Bot.run()
+```
+git clone https://github.com/MrMKN/Auto-ReqAccept-Bot
+```
 
-from pyrogram import Client, filters
-from pyrogram.types import Message
+5. Make Your Repo To Private Again
+6. Type The Following Command In VPS
 
-# Replace with your actual Owner ID
-OWNER_ID = 123456789 
-ADMINS = [OWNER_ID] # You can add more IDs here
+```
+cd Auto-ReqAccept-Bot
+```
 
-# --- OWNER ONLY COMMANDS ---
+```
+pip install -r requirements.txt
+```
 
-@Client.on_message(filters.command("stats") & filters.user(OWNER_ID))
-async def get_stats(client, message):
-    # Logic to count users from your database
-    await message.reply_text("📊 **Full Bot Statistics:**\nTotal Users: 1000\nTotal Channels: 5")
+```
+tmux
+```
 
-@Client.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
-async def broadcast(client, message):
-    if not message.reply_to_message:
-        return await message.reply_text("Reply to a message to broadcast it.")
-    await message.reply_text("📢 Starting broadcast...")
-    # Add loop here to send to all users in DB
+```
+python3 bot.py
+```
 
-@Client.on_message(filters.command("addadmin") & filters.user(OWNER_ID))
-async def add_admin(client, message):
-    # Logic to save new admin ID to database
-    await message.reply_text("✅ New admin added successfully.")
+7. press ctrl+b+d
 
-# --- ADMIN COMMANDS ---
+</details>
 
-@Client.on_message(filters.command("status") & filters.user(ADMINS))
-async def bot_status(client, message):
-    await message.reply_text("✅ Bot is running smoothly.")
 
-@Client.on_message(filters.command("addch") & filters.user(ADMINS))
-async def add_channel(client, message):
-    await message.reply_text("Please send the Channel ID or Username to link.")
+<details>
+<summary><b>Bot Commands</b></summary>
 
-# --- AUTO APPROVAL LOGIC ---
+```
+start - for stating the bot
 
-@Client.on_chat_join_request()
-async def auto_approve(client, chat_join_request):
-    chat = chat_join_request.chat
-    user = chat_join_request.from_user
-    
-    # Here you would check if 'reqmode' is ON in your DB
-    await client.approve_chat_join_request(chat_id=chat.id, user_id=user.id)
-    try:
-        await client.send_message(user.id, f"Welcome to {chat.title}! Your request was approved.")
-    except:
-        pass
+users - total bot users count
+
+broadcast - broadcast a message to all users
+```
+
+</details>
+
+
+
