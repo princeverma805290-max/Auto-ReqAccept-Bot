@@ -56,27 +56,58 @@ async def start_handler(c, m):
     if not await Data.find_one({'id': user_id}):
         await Data.insert_one({'id': user_id})
     
-    # Link Generate wala logic
-    if len(m.text.split()) > 1:
-        try:
-            chat_id = int(m.text.split()[1])
-            db_link = await LinkData.find_one({'chat_id': chat_id})
-            target_link = db_link['link'] if db_link else TP_SERVER
-            
-            text = "**HERE IS YOUR LINK! CLICK BELOW TO PROCEED**\n\n• **REQUEST TO JOIN** •"
-            note_text = "Note: If the link is expired, please click the post link again to get a new one."
-            
-            btn = [[InlineKeyboardButton("• REQUEST TO JOIN •", url=target_link)]]
-            msg = await m.reply_text(text)
-            note_msg = await m.reply_text(note_text, reply_markup=InlineKeyboardMarkup(btn))
-            
-            await asyncio.sleep(180) # 3 Min Auto Delete
+            # --- LINK GENERATE WALA LOGIC (REVISED) ---
+        if len(m.text.split()) > 1:
             try:
-                await msg.delete()
-                await note_msg.delete()
-            except: pass
-        except: pass
-        return
+                chat_id = int(m.text.split()[1])
+                db_link = await LinkData.find_one({'chat_id': chat_id})
+                target_link = db_link['link'] if db_link else TP_SERVER
+
+                # Database se Admin ki set ki hui photo aur text nikalna
+                config = await Settings.find_one({'id': 'config'})
+                pic = config.get('pic') if config else None
+                
+                # Format jaisa aapne screenshot mein dikhaya
+                text = f"**HERE IS YOUR LINK! CLICK BELOW TO PROCEED**\n\n• **REQUEST TO JOIN** •"
+                note_text = "Note: If the link is expired, please click the post link again to get a new one."
+
+                # Button se dots hataye gaye
+                btn = [[
+                    InlineKeyboardButton("REQUEST TO JOIN", url=target_link)
+                ]]
+
+                # Agar /setpic se photo set hai toh photo bhejega
+                if pic:
+                    msg = await c.send_photo(
+                        m.chat.id,
+                        photo=pic,
+                        caption=text,
+                        reply_markup=InlineKeyboardMarkup(btn)
+                    )
+                else:
+                    msg = await m.reply_text(
+                        text,
+                        reply_markup=InlineKeyboardMarkup(btn)
+                    )
+
+                # Note wala message alag se
+                note_msg = await m.reply_text(note_text)
+
+                # 3 Min Auto Delete Logic
+                await asyncio.sleep(180)
+                try:
+                    await msg.delete()
+                    await note_msg.delete()
+                except:
+                    pass
+                return
+
+            except Exception as e:
+                print(f"Error in Start: {e}")
+                # Agar error aaye toh fallback message
+                await m.reply_text(f"❌ Error: Bot ko us channel mein Admin banayein!\n{e}")
+                return
+
 
     # Simple Start Message
     text = f"Hai @{m.from_user.username} I am Auto Request Accept Bot. Add Me In Your Channel To Use"
